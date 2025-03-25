@@ -1,5 +1,6 @@
 using Catalog.Core.Entities;
 using Catalog.Core.Repositories;
+using Catalog.Core.Specs;
 using Catalog.Infrastructure.Data;
 using MongoDB.Driver;
 
@@ -8,18 +9,56 @@ namespace Catalog.Infrastructure.Repositories;
 public class ProductRepository : IProductRepository, IBrandRepository, ITypeRepository
 {
     private ICatalogContext _context { get; }
+
+    private async Task<IReadOnlyList<Product>> DataFilter(CatalogSpecParams catalogSpecParams, FilterDefinition<Product> filter)
+    {
+        var sortDefinition = Builders<Product>.Sort.Ascending("Name");
+        if (!string.IsNullOrEmpty(catalogSpecParams.Sort))
+        {
+            sortDefinition = catalogSpecParams.Sort switch
+            {
+                "priceAsc" => Builders<Product>.Sort.Ascending(p => p.Price),
+                "priceDesc" => Builders<Product>.Sort.Descending(p => p.Price),
+                _ => Builders<Product>.Sort.Ascending(p => p.Name)
+            };
+        }
+        
+        return await _context.Products
+            .Find(filter)
+            .Sort(sortDefinition)
+            .Skip((catalogSpecParams.PageIndex - 1) * catalogSpecParams.PageSize)
+            .Limit(catalogSpecParams.PageSize)
+            .ToListAsync();
+    }
     
     public ProductRepository(ICatalogContext context)
     {
         _context = context;
     }
     
-    public async Task<IEnumerable<Product>> GetAllProducts()
+    public async Task<Pagination<Product>> GetAllProducts(CatalogSpecParams catalogSpecParams)
     {
-        return await _context
-            .Products
-            .Find(a => true)
-            .ToListAsync();
+        var builder = Builders<Product>.Filter;
+        var filter = builder.Empty;
+
+        if (!string.IsNullOrEmpty(catalogSpecParams.Search))
+        {
+            filter &= builder.Where(x => x.Name.ToLower().Contains(catalogSpecParams.Search));
+        }
+
+        if (!string.IsNullOrEmpty(catalogSpecParams.BrandId))
+        {
+            filter &= builder.Eq(p => p.Brands.Id, catalogSpecParams.BrandId);
+        }
+
+        if (!string.IsNullOrEmpty(catalogSpecParams.TypeId))
+        {
+            filter &= builder.Eq(p => p.Types.Id, catalogSpecParams.TypeId);
+        }
+        var totalItems = await _context.Products.CountDocumentsAsync(filter);
+        var data = await DataFilter(catalogSpecParams, filter);
+        
+        return new Pagination<Product>(catalogSpecParams.PageIndex, catalogSpecParams.PageSize, totalItems, data);
     }
 
     public async Task<Product> GetProduct(string id)
