@@ -1,16 +1,19 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER $APP_UID
+USER app
 WORKDIR /app
 EXPOSE 8080
-EXPOSE 8081
+EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Discount/Discount.API/Discount.API.csproj", "Discount/Discount.API/"]
-RUN dotnet restore "Discount/Discount.API/Discount.API.csproj"
+COPY ["Services/Discount/Discount.API/Discount.API.csproj", "Services/Discount/Discount.API/"]
+COPY ["Services/Discount/Discount.Application/Discount.Application.csproj", "Services/Discount/Discount.Application/"]
+COPY ["Services/Discount/Discount.Core/Discount.Core.csproj", "Services/Discount/Discount.Core/"]
+COPY ["Services/Discount/Discount.Infrastructure/Discount.Infrastructure.csproj", "Services/Discount/Discount.Infrastructure/"]
+RUN dotnet restore "Services/Discount/Discount.API/Discount.API.csproj"
 COPY . .
-WORKDIR "/src/Discount/Discount.API"
+WORKDIR "/src/Services/Discount/Discount.API"
 RUN dotnet build "./Discount.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
