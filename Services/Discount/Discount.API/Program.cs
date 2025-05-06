@@ -22,6 +22,8 @@ builder.Services.AddScoped<IDiscountRepository, DiscountRepository>();
 builder.Services.AddGrpc();
 
 var app = builder.Build();
+
+// Migrate Database
 app.MigrateDatabase<Program>();
 
 // Configure the HTTP request pipeline.
@@ -31,6 +33,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+//app.UseAuthorization();
+
+//app.UseAuthentication();
 
 app.UseEndpoints(endpoints =>
 {
