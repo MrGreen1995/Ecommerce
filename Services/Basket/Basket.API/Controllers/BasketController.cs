@@ -2,7 +2,6 @@ using System.Net;
 using Basket.Application.Commands;
 using Basket.Application.Queries;
 using Basket.Application.Responses;
-using Basket.Core.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
